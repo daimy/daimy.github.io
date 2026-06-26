@@ -285,7 +285,6 @@ document.getElementById('tokenInput').addEventListener('change', function(e) {
 
 async function verifyToken() {
   const t = getToken();
-  console.log('[DEBUG] verifyToken, localStorage token:', t ? t.substring(0,10)+'...' : 'NONE');
   if (!t) {
     document.getElementById('rateInfo').textContent = '未设置token';
     document.getElementById('rateInfo').style.color = 'var(--text-dim)';
@@ -332,15 +331,12 @@ if (getToken()) {
 function getHeaders() {
   const h = { 'Accept': 'application/vnd.github.v3+json' };
   const t = getToken();
-  console.log('[DEBUG] getHeaders called, token:', t ? t.substring(0,10)+'...' : 'NONE');
   if (t) h['Authorization'] = 'Bearer ' + t;
   return h;
 }
 
 async function ghFetch(url) {
-  console.log('[DEBUG] ghFetch:', url.substring(0,80));
   const res = await fetch(url, { headers: getHeaders() });
-  console.log('[DEBUG] ghFetch response:', res.status, 'remaining:', res.headers.get('X-RateLimit-Remaining'), 'limit:', res.headers.get('X-RateLimit-Limit'));
   updateRateInfo(res);
   if (res.status === 403 && res.headers.get('X-RateLimit-Remaining') === '0') {
     throw new Error('API 频率限制已用完（60次/小时），请设置 GitHub Token 或 1 小时后重试');
@@ -428,7 +424,8 @@ function isAIRepo(r) {
 }
 
 async function searchRepos(query, sort, perPage) {
-  const url = `${API_BASE}/search/repositories?q=${encodeURIComponent(query)}&sort=${sort}&order=desc&per_page=${perPage}`;
+  const parts = query.split('+').map(p => encodeURIComponent(p)).join('+');
+  const url = `${API_BASE}/search/repositories?q=${parts}&sort=${sort}&order=desc&per_page=${perPage}`;
   return ghFetch(url);
 }
 
@@ -621,7 +618,6 @@ async function refreshAll() {
 }
 
 function forceRefresh() {
-  console.log('[DEBUG] forceRefresh called, token in localStorage:', getToken() ? getToken().substring(0,10)+'...' : 'NONE');
   try { localStorage.removeItem(CACHE_KEY); } catch(e) {}
   refreshAll();
 }
