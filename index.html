@@ -348,16 +348,19 @@ async function ghFetch(url) {
 function updateRateInfo(res) {
   const remaining = res.headers.get('X-RateLimit-Remaining');
   const limit = res.headers.get('X-RateLimit-Limit');
+  const resource = res.headers.get('X-RateLimit-Resource') || 'core';
   const hint = document.getElementById('tokenHint');
   const info = document.getElementById('rateInfo');
   if (remaining !== null) {
     hint.classList.add('show');
     const limitNum = parseInt(limit) || 60;
-    if (getToken() && limitNum > 100) {
-      info.textContent = `已认证 ${remaining}/${limitNum}`;
-    } else {
-      info.textContent = `${remaining}/${limitNum}`;
-    }
+    // Search API: 10=unauthenticated, 30=authenticated. Core API: 60=unauthenticated, 5000=authenticated.
+    const isAuth = getToken() && (
+      limitNum >= 5000 ||
+      (resource === 'search' && limitNum >= 30) ||
+      (resource === 'core' && limitNum >= 5000)
+    );
+    info.textContent = `${isAuth ? '已认证 ' : ''}${remaining}/${limitNum}${resource === 'search' ? ' (搜索)' : ''}`;
     if (parseInt(remaining) < 10) info.style.color = 'var(--accent4)';
     else if (parseInt(remaining) < 30) info.style.color = 'var(--accent3)';
     else info.style.color = 'var(--accent2)';
