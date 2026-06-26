@@ -193,6 +193,7 @@
     </div>
     <div class="controls">
       <span class="token-hint" id="tokenHint">API: <span id="rateInfo">--</span></span>
+      <span class="token-hint" id="countdownHint">下次刷新: <span id="nextUpdate">--</span></span>
       <input type="text" id="tokenInput" placeholder="GitHub Token (可选)" />
       <button class="btn" onclick="verifyToken()" title="验证 Token">验证</button>
       <button class="btn btn-icon" onclick="forceRefresh()" title="强制刷新 (清除缓存)">&#x21bb;</button>
@@ -242,7 +243,6 @@
 <footer>
   <div class="container">
     数据来自 GitHub API · 更新于 <span id="updateTime">--</span>
-    · 自动刷新：<span id="nextUpdate">--</span>
     · <a href="https://github.com/daimy/daimy.github.io" target="_blank">源码</a>
   </div>
 </footer>
@@ -627,11 +627,13 @@ let autoRefreshTimer = null;
 
 function updateCountdown() {
   const el = document.getElementById('nextUpdate');
+  const hint = document.getElementById('countdownHint');
   if (!el) return;
   const sec = Math.max(0, Math.floor((nextRefresh - Date.now()) / 1000));
   const min = Math.floor(sec / 60);
   const s = sec % 60;
-  el.textContent = min > 0 ? `${min}分${s}秒后刷新` : '刷新中...';
+  el.textContent = min > 0 ? `${min}分${s}秒后` : '刷新中...';
+  if (hint) hint.style.display = 'inline-block';
 }
 
 function scheduleAutoRefresh() {
