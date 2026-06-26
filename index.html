@@ -354,13 +354,10 @@ function updateRateInfo(res) {
   if (remaining !== null) {
     hint.classList.add('show');
     const limitNum = parseInt(limit) || 60;
-    // Search API: 10=unauthenticated, 30=authenticated. Core API: 60=unauthenticated, 5000=authenticated.
-    const isAuth = getToken() && (
-      limitNum >= 5000 ||
-      (resource === 'search' && limitNum >= 30) ||
-      (resource === 'core' && limitNum >= 5000)
-    );
-    info.textContent = `${isAuth ? '已认证 ' : ''}${remaining}/${limitNum}${resource === 'search' ? ' (搜索)' : ''}`;
+    // Detect auth by limit value: unauthenticated=10(search)/60(core), authenticated=30(search)/5000(core)
+    const isAuth = limitNum > 10 && limitNum !== 60;
+    const label = resource === 'search' ? '搜索' : '';
+    info.textContent = `${isAuth ? '已认证 ' : ''}${remaining}/${limitNum} ${label}`.trim();
     if (parseInt(remaining) < 10) info.style.color = 'var(--accent4)';
     else if (parseInt(remaining) < 30) info.style.color = 'var(--accent3)';
     else info.style.color = 'var(--accent2)';
