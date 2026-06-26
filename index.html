@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Trends | 热点追踪</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-card: #161b22;
+    --bg-card-hover: #1c2333;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #d29922;
+    --accent4: #f78166;
+    --gradient-ai: linear-gradient(135deg, #667eea, #764ba2);
+    --radius: 12px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,17,23,0.92);
+    backdrop-filter: blur(12px);
+  }
+  .header-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 20px; font-weight: 700;
+  }
+  .logo svg { width: 32px; height: 32px; fill: var(--text); }
+  .logo span { background: var(--gradient-ai); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+  .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .btn {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg-card); color: var(--text); cursor: pointer;
+    font-size: 14px; transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--bg-card-hover); border-color: var(--accent); }
+  .btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-icon { padding: 8px 12px; }
+  input[type="text"] {
+    padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg-card); color: var(--text); font-size: 14px;
+    outline: none; width: 200px;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--text-dim); }
+
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+    gap: 16px; padding: 24px 0;
+  }
+  .stat-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .stat-icon { font-size: 28px; opacity: 0.8; }
+  .stat-info h3 { font-size: 13px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+  .stat-info .val { font-size: 28px; font-weight: 700; }
+
+  section { padding: 20px 0 40px; }
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .section-header h2 { font-size: 22px; display: flex; align-items: center; gap: 10px; }
+  .badge {
+    font-size: 12px; padding: 2px 10px; border-radius: 20px;
+    background: var(--accent); color: #fff; font-weight: 600;
+  }
+  .badge-ai { background: linear-gradient(135deg, #667eea, #764ba2); }
+
+  .repo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .repo-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    transition: all 0.2s; display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+  .repo-card:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+  .repo-card .rank {
+    position: absolute; top: 12px; right: 16px;
+    font-size: 12px; color: var(--text-dim);
+  }
+  .repo-card h3 { font-size: 16px; margin-bottom: 4px; }
+  .repo-card h3 a { color: var(--accent); }
+  .repo-card .desc {
+    font-size: 13px; color: var(--text-dim);
+    margin-bottom: 12px; flex: 1;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .repo-meta {
+    display: flex; gap: 16px; font-size: 13px; color: var(--text-dim);
+    flex-wrap: wrap;
+  }
+  .repo-meta span { display: flex; align-items: center; gap: 4px; }
+  .repo-meta .lang-dot {
+    width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+  }
+  .topics { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .topic-tag {
+    font-size: 11px; padding: 3px 10px; border-radius: 20px;
+    background: rgba(88,166,255,0.12); color: var(--accent);
+    white-space: nowrap;
+  }
+
+  .topic-cloud { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 0; }
+  .topic-cloud-item {
+    padding: 8px 18px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--bg-card);
+    font-size: 14px; cursor: pointer; transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .topic-cloud-item:hover {
+    background: var(--bg-card-hover); border-color: var(--accent);
+    transform: scale(1.05);
+  }
+  .topic-cloud-item.hot {
+    border-color: var(--accent3); background: rgba(210,153,34,0.1);
+    font-weight: 600;
+  }
+
+  .loading {
+    display: flex; justify-content: center; padding: 60px;
+    color: var(--text-dim); font-size: 16px;
+  }
+  .spinner {
+    width: 32px; height: 32px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin-right: 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty { text-align: center; padding: 60px; color: var(--text-dim); }
+  .error { text-align: center; padding: 40px; color: var(--accent4); }
+
+  footer {
+    border-top: 1px solid var(--border); padding: 24px 0;
+    text-align: center; color: var(--text-dim); font-size: 13px;
+  }
+
+  .token-hint {
+    font-size: 12px; color: var(--text-dim);
+    background: var(--bg-card); padding: 6px 12px;
+    border-radius: 6px; border: 1px solid var(--border);
+    display: none;
+  }
+  .token-hint.show { display: inline-block; }
+
+  @media (max-width: 768px) {
+    .repo-grid { grid-template-columns: 1fr; }
+    .header-inner { flex-direction: column; align-items: flex-start; }
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="container header-inner">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+      <span>GitHub Trends</span>
+    </div>
+    <div class="controls">
+      <span class="token-hint" id="tokenHint">API: <span id="rateInfo">--</span></span>
+      <input type="text" id="tokenInput" placeholder="GitHub Token (可选)" />
+      <button class="btn btn-icon" onclick="refreshAll()" title="刷新">&#x21bb;</button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <div class="stats-bar" id="statsBar"></div>
+
+  <section>
+    <div class="section-header">
+      <h2>🔥 AI / ML 热点 <span class="badge badge-ai">AI</span></h2>
+      <div style="display:flex;gap:6px">
+        <button class="btn active" data-cat="ai" onclick="filterCategory('ai', this)">本周</button>
+        <button class="btn" data-cat="ai-month" onclick="filterCategory('ai-month', this)">本月</button>
+      </div>
+    </div>
+    <div class="repo-grid" id="aiGrid"></div>
+  </section>
+
+  <section>
+    <div class="section-header">
+      <h2>📈 全领域趋势</h2>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn active" data-cat="all" onclick="filterCategory('all', this)">全部</button>
+        <button class="btn" data-cat="python" onclick="filterCategory('python', this)">Python</button>
+        <button class="btn" data-cat="rust" onclick="filterCategory('rust', this)">Rust</button>
+        <button class="btn" data-cat="go" onclick="filterCategory('go', this)">Go</button>
+        <button class="btn" data-cat="typescript" onclick="filterCategory('typescript', this)">TypeScript</button>
+        <button class="btn" data-cat="javascript" onclick="filterCategory('javascript', this)">JavaScript</button>
+        <button class="btn" data-cat="c++" onclick="filterCategory('cpp', this)">C++</button>
+        <button class="btn" data-cat="java" onclick="filterCategory('java', this)">Java</button>
+      </div>
+    </div>
+    <div class="repo-grid" id="allGrid"></div>
+  </section>
+
+  <section>
+    <div class="section-header">
+      <h2>🏷️ 热门话题</h2>
+    </div>
+    <div class="topic-cloud" id="topicCloud"></div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    数据来自 GitHub API · 更新于 <span id="updateTime">--</span>
+    · <a href="https://github.com/daimy/daimy.github.io" target="_blank">源码</a>
+  </div>
+</footer>
+
+<script>
+const API_BASE = 'https://api.github.com';
+const CACHE_KEY = 'gh_trends_cache';
+const CACHE_TTL = 30 * 60 * 1000; // 30 min
+
+let token = localStorage.getItem('gh_token') || '';
+let currentCat = 'all';
+let aiRange = 'week';
+let allData = {};
+
+document.getElementById('tokenInput').value = token ? '••••••••' : '';
+document.getElementById('tokenInput').addEventListener('change', function(e) {
+  const val = e.target.value.trim();
+  if (val && val !== '••••••••') {
+    token = val;
+    localStorage.setItem('gh_token', token);
+  }
+  if (!val) {
+    token = '';
+    localStorage.removeItem('gh_token');
+  }
+  refreshAll();
+});
+
+function getHeaders() {
+  const h = { 'Accept': 'application/vnd.github.v3+json' };
+  if (token) h['Authorization'] = 'token ' + token;
+  return h;
+}
+
+async function ghFetch(url) {
+  const res = await fetch(url, { headers: getHeaders() });
+  updateRateInfo(res);
+  if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
+  return res.json();
+}
+
+function updateRateInfo(res) {
+  const remaining = res.headers.get('X-RateLimit-Remaining');
+  const limit = res.headers.get('X-RateLimit-Limit');
+  const hint = document.getElementById('tokenHint');
+  const info = document.getElementById('rateInfo');
+  if (remaining !== null) {
+    hint.classList.add('show');
+    info.textContent = `${remaining}/${limit || '?'}`;
+    if (parseInt(remaining) < 10) info.style.color = 'var(--accent4)';
+    else info.style.color = 'var(--accent2)';
+  }
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const cache = JSON.parse(raw);
+    if (Date.now() - cache.ts > CACHE_TTL) return null;
+    return cache.data;
+  } catch(e) { return null; }
+}
+
+function saveCache(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+  } catch(e) {}
+}
+
+const LANG_COLORS = {
+  Python: '#3572A5', JavaScript: '#f1e05a', TypeScript: '#3178c6',
+  Rust: '#dea584', Go: '#00ADD8', 'C++': '#f34b7d', Java: '#b07219',
+  Shell: '#89e051', HTML: '#e34c26', CSS: '#563d7c', Vue: '#41b883',
+  'Jupyter Notebook': '#DA5B0B', Ruby: '#701516', Swift: '#F05138',
+  Kotlin: '#A97BFF', Dart: '#00B4AB', Scala: '#c22d40',
+};
+
+function langColor(lang) { return LANG_COLORS[lang] || '#8b949e'; }
+
+const AI_TOPICS = [
+  'machine-learning','deep-learning','llm','gpt','transformer','nlp',
+  'computer-vision','reinforcement-learning','generative-ai','rag',
+  'langchain','stable-diffusion','llama','neural-network','ai-agent',
+  'mcp','model-context-protocol','mlops','pytorch','tensorflow',
+  'huggingface','diffusion','text-to-image','text-to-video',
+  'ai','artificial-intelligence','openai','claude','gemini','mistral',
+];
+
+const HOT_TOPICS_LIST = [
+  'ai','llm','machine-learning','mcp','agents','rag',
+  'rust','webassembly','kubernetes','docker','serverless',
+  'react','vue','nextjs','typescript','python','golang',
+  'security','devops','blockchain','iot',
+];
+
+async function searchRepos(query, sort='stars', perPage=20) {
+  const url = `${API_BASE}/search/repositories?q=${encodeURIComponent(query)}&sort=${sort}&order=desc&per_page=${perPage}`;
+  return ghFetch(url);
+}
+
+function buildDateQuery(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().split('T')[0];
+}
+
+function repoCard(r, idx) {
+  const topics = (r.topics || []).slice(0, 5).map(t =>
+    `<span class="topic-tag">${esc(t)}</span>`
+  ).join('');
+  return `
+    <div class="repo-card">
+      <span class="rank">#${idx + 1}</span>
+      <h3><a href="${esc(r.html_url)}" target="_blank">${esc(r.full_name)}</a></h3>
+      <p class="desc">${esc(r.description || 'No description')}</p>
+      <div class="repo-meta">
+        <span>&#9733; ${fmtNum(r.stargazers_count)}</span>
+        <span>&#59842; ${fmtNum(r.forks_count)}</span>
+        ${r.language ? `<span><span class="lang-dot" style="background:${langColor(r.language)}"></span> ${esc(r.language)}</span>` : ''}
+      </div>
+      ${topics ? `<div class="topics">${topics}</div>` : ''}
+    </div>`;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function fmtNum(n) { return n >= 1000 ? (n/1000).toFixed(1) + 'k' : n; }
+
+async function fetchAllData() {
+  const cache = loadCache();
+  if (cache) return cache;
+
+  const weekDate = buildDateQuery(7);
+  const monthDate = buildDateQuery(30);
+
+  const queries = {
+    ai: `topic:machine-learning+stars:>10+created:>${weekDate}`,
+    'ai-month': `topic:machine-learning+stars:>100+created:>${monthDate}`,
+    all: `stars:>100+created:>${weekDate}`,
+    python: `language:python+stars:>50+created:>${weekDate}`,
+    rust: `language:rust+stars:>50+created:>${weekDate}`,
+    go: `language:go+stars:>50+created:>${weekDate}`,
+    typescript: `language:typescript+stars:>50+created:>${weekDate}`,
+    javascript: `language:javascript+stars:>50+created:>${weekDate}`,
+    cpp: `language:c+++stars:>50+created:>${weekDate}`,
+    java: `language:java+stars:>50+created:>${weekDate}`,
+  };
+
+  const data = {};
+  const keys = Object.keys(queries);
+  for (let i = 0; i < keys.length; i++) {
+    try {
+      const res = await searchRepos(queries[keys[i]]);
+      data[keys[i]] = res.items || [];
+    } catch(e) {
+      console.error('Fetch error:', keys[i], e);
+      data[keys[i]] = [];
+    }
+    // Small delay to avoid rate limiting
+    if (i < keys.length - 1) await sleep(200);
+  }
+
+  // Derive topic trends from repo topics
+  const topicCount = {};
+  Object.values(data).flat().forEach(r => {
+    (r.topics || []).forEach(t => {
+      topicCount[t] = (topicCount[t] || 0) + 1;
+    });
+  });
+  data._topics = Object.entries(topicCount)
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 30)
+    .map(([name, count]) => ({ name, count }));
+
+  saveCache(data);
+  return data;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function renderStats(data) {
+  const allRepos = data.all || [];
+  const aiRepos = data.ai || [];
+  const totalStars = allRepos.reduce((s, r) => s + r.stargazers_count, 0);
+  const stats = [
+    { icon: '📦', label: '本周趋势项目', val: fmtNum(allRepos.length) },
+    { icon: '⭐', label: '新增总星数', val: fmtNum(totalStars) },
+    { icon: '🤖', label: 'AI/ML 项目', val: fmtNum(aiRepos.length) },
+    { icon: '🏷️', label: '热门话题', val: fmtNum(data._topics?.length || 0) },
+  ];
+  document.getElementById('statsBar').innerHTML = stats.map(s => `
+    <div class="stat-card">
+      <div class="stat-icon">${s.icon}</div>
+      <div class="stat-info"><h3>${s.label}</h3><div class="val">${s.val}</div></div>
+    </div>
+  `).join('');
+}
+
+function renderGrid(gridId, repos) {
+  const grid = document.getElementById(gridId);
+  if (!repos || repos.length === 0) {
+    grid.innerHTML = '<div class="empty">暂无数据，请稍后刷新</div>';
+    return;
+  }
+  grid.innerHTML = repos.slice(0, 30).map((r, i) => repoCard(r, i)).join('');
+}
+
+function renderTopics(topics) {
+  const cloud = document.getElementById('topicCloud');
+  if (!topics || topics.length === 0) {
+    cloud.innerHTML = '<span class="empty">加载中...</span>';
+    return;
+  }
+  cloud.innerHTML = topics.map(t => {
+    const isHot = HOT_TOPICS_LIST.includes(t.name) || AI_TOPICS.includes(t.name);
+    return `<span class="topic-cloud-item${isHot ? ' hot' : ''}" title="出现 ${t.count} 次">${esc(t.name)}</span>`;
+  }).join('');
+}
+
+function renderAll(data) {
+  allData = data;
+  renderStats(data);
+  renderGrid('aiGrid', data.ai || []);
+  renderGrid('allGrid', data.all || []);
+  renderTopics(data._topics || []);
+  document.getElementById('updateTime').textContent = new Date().toLocaleString('zh-CN');
+}
+
+function filterCategory(cat, btn) {
+  currentCat = cat;
+  // Update button styles
+  btn.parentElement.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  if (cat === 'ai') {
+    renderGrid('aiGrid', allData.ai || []);
+  } else if (cat === 'ai-month') {
+    renderGrid('aiGrid', allData['ai-month'] || []);
+  } else {
+    renderGrid('allGrid', allData[cat] || []);
+  }
+}
+
+async function refreshAll() {
+  document.getElementById('aiGrid').innerHTML = '<div class="loading"><div class="spinner"></div> 加载趋势数据...</div>';
+  document.getElementById('allGrid').innerHTML = '<div class="loading"><div class="spinner"></div> 加载趋势数据...</div>';
+  document.getElementById('topicCloud').innerHTML = '<span class="empty">加载中...</span>';
+
+  try {
+    const data = await fetchAllData();
+    renderAll(data);
+    // Reset active buttons
+    document.getElementById('aiGrid').parentElement.querySelectorAll('.btn')[0].classList.add('active');
+    document.getElementById('aiGrid').parentElement.querySelectorAll('.btn')[1]?.classList.remove('active');
+    const allBtns = document.getElementById('allGrid').parentElement.querySelectorAll('.btn');
+    allBtns.forEach(b => b.classList.remove('active'));
+    allBtns[0].classList.add('active');
+    currentCat = 'all';
+  } catch(e) {
+    document.getElementById('aiGrid').innerHTML = `<div class="error">加载失败: ${esc(e.message)}。可能是 API 频率限制，请设置 GitHub Token 或稍后重试。</div>`;
+    document.getElementById('allGrid').innerHTML = '';
+  }
+}
+
+// Init
+(async function init() {
+  const cache = loadCache();
+  if (cache) {
+    renderAll(cache);
+  } else {
+    document.getElementById('aiGrid').innerHTML = '<div class="loading"><div class="spinner"></div> 首次加载中...</div>';
+    document.getElementById('allGrid').innerHTML = '<div class="loading"><div class="spinner"></div> 首次加载中...</div>';
+  }
+  try {
+    const data = await fetchAllData();
+    renderAll(data);
+  } catch(e) {
+    console.error('Init error:', e);
+    if (!loadCache()) {
+      document.getElementById('aiGrid').innerHTML = `<div class="error">加载失败: ${esc(e.message)}</div>`;
+    }
+  }
+})();
+</script>
+</body>
+</html>
