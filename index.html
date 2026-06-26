@@ -194,6 +194,7 @@
     <div class="controls">
       <span class="token-hint" id="tokenHint">API: <span id="rateInfo">--</span></span>
       <input type="text" id="tokenInput" placeholder="GitHub Token (可选)" />
+      <button class="btn" onclick="verifyToken()" title="验证 Token">验证</button>
       <button class="btn btn-icon" onclick="forceRefresh()" title="强制刷新 (清除缓存)">&#x21bb;</button>
     </div>
   </div>
@@ -261,9 +262,11 @@ document.getElementById('tokenInput').addEventListener('input', function(e) {
   if (val && val !== '••••••••') {
     token = val;
     localStorage.setItem('gh_token', token);
+    updateTokenStatus('saved');
   } else if (!val) {
     token = '';
     localStorage.removeItem('gh_token');
+    updateTokenStatus('none');
   }
 });
 document.getElementById('tokenInput').addEventListener('change', function(e) {
@@ -279,9 +282,63 @@ document.getElementById('tokenInput').addEventListener('change', function(e) {
   forceRefresh();
 });
 
+function updateTokenStatus(status) {
+  const hint = document.getElementById('tokenHint');
+  hint.classList.add('show');
+  const info = document.getElementById('rateInfo');
+  switch(status) {
+    case 'saved': info.textContent = 'token已保存(未验证)'; info.style.color = 'var(--accent3)'; break;
+    case 'valid': info.textContent = '已认证'; info.style.color = 'var(--accent2)'; break;
+    case 'invalid': info.textContent = 'token无效!'; info.style.color = 'var(--accent4)'; break;
+    case 'none': info.textContent = '未设置token'; info.style.color = 'var(--text-dim)'; break;
+  }
+}
+
+async function verifyToken() {
+  const t = token || localStorage.getItem('gh_token') || '';
+  if (!t) {
+    updateTokenStatus('none');
+    alert('请先输入 GitHub Token');
+    return;
+  }
+  if (t !== token) { token = t; localStorage.setItem('gh_token', t); }
+  document.getElementById('rateInfo').textContent = '验证中...';
+  try {
+    const res = await fetch(`${API_BASE}/rate_limit`, {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': 'Bearer ' + token
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const core = data.resources?.core;
+      if (core && core.limit >= 5000) {
+        updateTokenStatus('valid');
+        document.getElementById('rateInfo').textContent = `已认证 ${core.remaining}/${core.limit}`;
+      } else {
+        updateTokenStatus('invalid');
+        document.getElementById('rateInfo').textContent = `限额异常: ${core?.limit || '?'}`;
+      }
+    } else {
+      updateTokenStatus('invalid');
+      document.getElementById('rateInfo').textContent = `验证失败 HTTP ${res.status}`;
+    }
+  } catch(e) {
+    updateTokenStatus('invalid');
+    document.getElementById('rateInfo').textContent = '网络错误';
+  }
+}
+
+// Run verification on load if token exists
+if (token) {
+  updateTokenStatus('saved');
+  setTimeout(verifyToken, 500);
+}
+
 function getHeaders() {
   const h = { 'Accept': 'application/vnd.github.v3+json' };
-  if (token) h['Authorization'] = 'token ' + token;
+  if (token) h['Authorization'] = 'Bearer ' + token;
   return h;
 }
 
