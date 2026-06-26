@@ -251,94 +251,87 @@ const API_BASE = 'https://api.github.com';
 const CACHE_KEY = 'gh_trends_cache';
 const CACHE_TTL = 30 * 60 * 1000;
 
-let token = localStorage.getItem('gh_token') || '';
 let currentCat = 'all';
 let currentAiRange = 'week';
 let allData = {};
 
-document.getElementById('tokenInput').value = token ? '••••••••' : '';
+function getToken() {
+  return localStorage.getItem('gh_token') || '';
+}
+
+// Sync input display with stored token
+(function(){
+  const t = getToken();
+  const inp = document.getElementById('tokenInput');
+  inp.value = t ? '••••••••' : '';
+})();
+
 document.getElementById('tokenInput').addEventListener('input', function(e) {
   const val = e.target.value.trim();
   if (val && val !== '••••••••') {
-    token = val;
-    localStorage.setItem('gh_token', token);
-    updateTokenStatus('saved');
-  } else if (!val) {
-    token = '';
-    localStorage.removeItem('gh_token');
-    updateTokenStatus('none');
+    localStorage.setItem('gh_token', val);
   }
 });
 document.getElementById('tokenInput').addEventListener('change', function(e) {
   const val = e.target.value.trim();
-  if (val && val !== '••••••••') {
-    token = val;
-    localStorage.setItem('gh_token', token);
-  }
   if (!val) {
-    token = '';
     localStorage.removeItem('gh_token');
+    document.getElementById('tokenInput').value = '';
+    document.getElementById('rateInfo').textContent = '未设置token';
+    document.getElementById('rateInfo').style.color = 'var(--text-dim)';
+    document.getElementById('tokenHint').classList.add('show');
   }
-  forceRefresh();
 });
 
-function updateTokenStatus(status) {
-  const hint = document.getElementById('tokenHint');
-  hint.classList.add('show');
-  const info = document.getElementById('rateInfo');
-  switch(status) {
-    case 'saved': info.textContent = 'token已保存(未验证)'; info.style.color = 'var(--accent3)'; break;
-    case 'valid': info.textContent = '已认证'; info.style.color = 'var(--accent2)'; break;
-    case 'invalid': info.textContent = 'token无效!'; info.style.color = 'var(--accent4)'; break;
-    case 'none': info.textContent = '未设置token'; info.style.color = 'var(--text-dim)'; break;
-  }
-}
-
 async function verifyToken() {
-  const t = token || localStorage.getItem('gh_token') || '';
+  const t = getToken();
   if (!t) {
-    updateTokenStatus('none');
-    alert('请先输入 GitHub Token');
+    document.getElementById('rateInfo').textContent = '未设置token';
+    document.getElementById('rateInfo').style.color = 'var(--text-dim)';
+    document.getElementById('tokenHint').classList.add('show');
     return;
   }
-  if (t !== token) { token = t; localStorage.setItem('gh_token', t); }
   document.getElementById('rateInfo').textContent = '验证中...';
+  document.getElementById('tokenHint').classList.add('show');
   try {
     const res = await fetch(`${API_BASE}/rate_limit`, {
       headers: {
         'Accept': 'application/vnd.github.v3+json',
-        'Authorization': 'Bearer ' + token
+        'Authorization': 'Bearer ' + t
       }
     });
     if (res.ok) {
       const data = await res.json();
       const core = data.resources?.core;
       if (core && core.limit >= 5000) {
-        updateTokenStatus('valid');
         document.getElementById('rateInfo').textContent = `已认证 ${core.remaining}/${core.limit}`;
+        document.getElementById('rateInfo').style.color = 'var(--accent2)';
       } else {
-        updateTokenStatus('invalid');
         document.getElementById('rateInfo').textContent = `限额异常: ${core?.limit || '?'}`;
+        document.getElementById('rateInfo').style.color = 'var(--accent4)';
       }
     } else {
-      updateTokenStatus('invalid');
       document.getElementById('rateInfo').textContent = `验证失败 HTTP ${res.status}`;
+      document.getElementById('rateInfo').style.color = 'var(--accent4)';
     }
   } catch(e) {
-    updateTokenStatus('invalid');
     document.getElementById('rateInfo').textContent = '网络错误';
+    document.getElementById('rateInfo').style.color = 'var(--accent4)';
   }
 }
 
 // Run verification on load if token exists
-if (token) {
-  updateTokenStatus('saved');
+if (getToken()) {
+  document.getElementById('tokenHint').classList.add('show');
+  document.getElementById('rateInfo').textContent = 'token已保存';
+  document.getElementById('rateInfo').style.color = 'var(--accent3)';
   setTimeout(verifyToken, 500);
 }
 
 function getHeaders() {
   const h = { 'Accept': 'application/vnd.github.v3+json' };
-  if (token) h['Authorization'] = 'Bearer ' + token;
+  const t = getToken();
+  if (t) h['Authorization'] = 'Bearer ' + t;
   return h;
 }
 
@@ -360,7 +353,7 @@ function updateRateInfo(res) {
   if (remaining !== null) {
     hint.classList.add('show');
     const limitNum = parseInt(limit) || 60;
-    if (token && limitNum > 100) {
+    if (getToken() && limitNum > 100) {
       info.textContent = `已认证 ${remaining}/${limitNum}`;
     } else {
       info.textContent = `${remaining}/${limitNum}`;
